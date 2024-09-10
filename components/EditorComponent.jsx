@@ -18,6 +18,7 @@ import { Button } from "./ui/button";
 import { Loader, Play, TriangleAlert } from "lucide-react";
 import { codeSnippets, languageOptions } from "@/config/config";
 import { compileCode } from "../actions/compile";
+import { usePathname } from "next/navigation";
 
 export default function EditorComponent({ problem }) {
   const { theme } = useTheme();
@@ -27,6 +28,8 @@ export default function EditorComponent({ problem }) {
   const [output, setOutput] = useState([]);
   const [err, setErr] = useState(false);
   const [sourceCode, setSourceCode] = useState(codeSnippets["python"]);
+  const pathname = usePathname();
+  // console.log(pathname);
 
   function handleEditorDidMount(editor) {
     if (editor) {
@@ -64,6 +67,50 @@ export default function EditorComponent({ problem }) {
       toast.error("Failed to compile the Code");
     }
   }
+  async function downloadFile(filename, content) {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleSubmit() {
+    setLoading(true);
+    const requestData = {
+      language: languageOption.language,
+      version: languageOption.version,
+      files: [
+        {
+          content: sourceCode,
+        },
+      ],
+    };
+    try {
+      const result = await compileCode(requestData);
+      setOutput(result.run.output.split("\n"));
+      console.log(result);
+
+      // Download code file
+      await downloadFile(`${pathname}_code.txt`, sourceCode);
+
+      // Download output file
+      await downloadFile(`${pathname}_output.txt`, result.run.output);
+
+      toast.success("Code saved and output downloaded successfully");
+      setLoading(false);
+      setErr(false);
+    } catch (error) {
+      setErr(true);
+      setLoading(false);
+      toast.error("Failed to compile the Code");
+      console.log(error);
+    }
+  }
 
   function onSelect(value) {
     const selectedLanguage = value.language;
@@ -80,7 +127,7 @@ export default function EditorComponent({ problem }) {
             Coding Playground
           </h2>
           <div className="flex items-center space-x-2 pb-3">
-            <Button onClick={executeCode}>Submit</Button>
+            <Button onClick={handleSubmit}>Submit</Button>
           </div>
           <div className="flex items-center space-x-2 pb-3">
             {/* Theme Toggler */}
