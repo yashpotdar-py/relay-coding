@@ -42,10 +42,44 @@ export default function EditorComponent() {
     }
   }
 
-  // function onSelect(value: selectedLanguageOptionProps) {
-  //   setLanguageOption(value);
-  //   setSourceCode(codeSnippets[value.language]);
-  // }
+  async function onSubmit() {
+    setLoading(true);
+    const requestData = {
+      language: languageOption.language,
+      version: languageOption.version,
+      files: [
+        {
+          content: sourceCode,
+        },
+      ],
+    };
+    try {
+      const result = await compileCode(requestData);
+      setOutput(result.run.output.split("\n"));
+      console.log(result);
+      const blob = new Blob([sourceCode], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `code.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Code saved locally");
+      setLoading(false);
+      setErr(false);
+      toast.success("Compiled Successfully");
+    } catch (error) {
+      setErr(true);
+      setLoading(false);
+      toast.error("Failed to compile the Code");
+      console.log(error);
+    }
+
+    console.log(requestData);
+    // setLoading(false);
+  }
 
   function onSelect(value) {
     const selectedLanguage = value.language;
@@ -87,6 +121,9 @@ export default function EditorComponent() {
           <h2 className="scroll-m-20 text-2xl font-semibold tracking-tight first:mt-0">
             Coding Playground
           </h2>
+          <div className="flex items-center space-x-2 pb-3">
+            <Button onClick={onSubmit}>Submit</Button>
+          </div>
           {/* Editor Header */}
           <div className="flex items-center space-x-2 pb-3">
             {/* Theme Toggler */}
