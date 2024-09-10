@@ -19,7 +19,7 @@ import { Loader, Play, TriangleAlert } from "lucide-react";
 import { codeSnippets, languageOptions } from "@/config/config";
 import { compileCode } from "../actions/compile";
 
-export default function EditorComponent() {
+export default function EditorComponent({ problem }) {
   const { theme } = useTheme();
   const editorRef = useRef(null);
   const [languageOption, setLanguageOption] = useState(languageOptions[3]);
@@ -41,57 +41,6 @@ export default function EditorComponent() {
     }
   }
 
-  async function downloadFile(filename, content) {
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
-
-  async function onSubmit() {
-    setLoading(true);
-    const requestData = {
-      language: languageOption.language,
-      version: languageOption.version,
-      files: [
-        {
-          content: sourceCode,
-        },
-      ],
-    };
-    try {
-      const result = await compileCode(requestData);
-      setOutput(result.run.output.split("\n"));
-      console.log(result);
-
-      // Download code file
-      await downloadFile("code.txt", sourceCode);
-
-      // Download output file
-      await downloadFile("output.txt", result.run.output);
-
-      toast.success("Code saved and output downloaded successfully");
-      setLoading(false);
-      setErr(false);
-    } catch (error) {
-      setErr(true);
-      setLoading(false);
-      toast.error("Failed to compile the Code");
-      console.log(error);
-    }
-  }
-
-  function onSelect(value) {
-    const selectedLanguage = value.language;
-    setLanguageOption(value);
-    setSourceCode(codeSnippets[selectedLanguage]);
-  }
-
   async function executeCode() {
     setLoading(true);
     const requestData = {
@@ -106,7 +55,6 @@ export default function EditorComponent() {
     try {
       const result = await compileCode(requestData);
       setOutput(result.run.output.split("\n"));
-      console.log(result);
       setLoading(false);
       setErr(false);
       toast.success("Compiled Successfully");
@@ -114,22 +62,26 @@ export default function EditorComponent() {
       setErr(true);
       setLoading(false);
       toast.error("Failed to compile the Code");
-      console.log(error);
     }
+  }
+
+  function onSelect(value) {
+    const selectedLanguage = value.language;
+    setLanguageOption(value);
+    setSourceCode(codeSnippets[selectedLanguage]);
   }
 
   return (
     <>
-      <div className="min-h-screen dark:bg-slate-900 bg-slate-300 rounded shadow-2xl py-6 px-8">
+      <div className="min-h-screen dark:bg-slate-900 bg-slate-300 rounded-lg shadow-2xl py-6 px-8">
         {/* Editor Header */}
-        <div className="flex items-center justify-between ">
+        <div className="flex items-center justify-between">
           <h2 className="scroll-m-20 text-2xl font-semibold tracking-tight first:mt-0">
             Coding Playground
           </h2>
           <div className="flex items-center space-x-2 pb-3">
-            <Button onClick={onSubmit}>Submit</Button>
+            <Button onClick={executeCode}>Submit</Button>
           </div>
-          {/* Editor Header */}
           <div className="flex items-center space-x-2 pb-3">
             {/* Theme Toggler */}
             <ModeToggleBtn />
@@ -142,24 +94,46 @@ export default function EditorComponent() {
             </div>
           </div>
         </div>
-        {/* Editor */}
+
+        {/* Resizable Panels */}
         <div className="bg-slate-400 dark:bg-slate-950 p-3 rounded">
           <div className="dark:bg-slate-900 bg-slate-300 rounded">
             <ResizablePanelGroup
               direction="horizontal"
               className="rounded-lg border md:min-w-[450px] min-h-lvh w-full"
             >
+              {/* Problem Statement Panel */}
               <ResizablePanel defaultSize={25} minSize={15}>
                 <div className="flex justify-center">
-                  <div className="flex p-6 dark:bg-slate-800 bg-slate-400 rounded m-2 w-full items-center justify-center">
-                    <h2>Problem Statement</h2>
-                    <h3></h3>
+                  <div className="flex p-2 dark:bg-slate-800 bg-slate-400 rounded m-2 w-full items-center justify-center">
+                    <div className="bg-slate-400 dark:bg-slate-950 p-3 rounded w-full">
+                      <h2 className="text-2xl font-semibold">
+                        Problem Statement
+                      </h2>
+                      {problem ? (
+                        <>
+                          <h3 className="text-xl bg-slate-800">
+                            {problem.title}
+                          </h3>
+                          <p>{problem.description}</p>
+                        </>
+                      ) : (
+                        <p>
+                          No problem available for this round. Please refresh
+                          the page
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </ResizablePanel>
+
               <ResizableHandle withHandle />
+
+              {/* Editor and Output Panels */}
               <ResizablePanel defaultSize={75} minSize={50}>
                 <ResizablePanelGroup direction="vertical">
+                  {/* Code Editor Panel */}
                   <ResizablePanel
                     defaultSize={50}
                     minSize={25}
@@ -173,9 +147,7 @@ export default function EditorComponent() {
                       onMount={handleEditorDidMount}
                       language={languageOption.language}
                       options={{
-                        minimap: {
-                          enabled: false,
-                        },
+                        minimap: { enabled: false },
                         fontSize: 18,
                         cursorStyle: "line",
                         wordWrap: "on",
@@ -184,8 +156,11 @@ export default function EditorComponent() {
                       onChange={handleOnChange}
                     />
                   </ResizablePanel>
+
                   <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={50} minSize={25} className="">
+
+                  {/* Output Panel */}
+                  <ResizablePanel defaultSize={50} minSize={25}>
                     <div className="p-4 bg-white dark:bg-slate-800 m-2 rounded">
                       <div className="flex items-center justify-between p-2 dark:bg-slate-800 bg-slate-400 rounded">
                         <h2>Output</h2>
@@ -196,7 +171,7 @@ export default function EditorComponent() {
                             className="dark:bg-purple-600 dark:hover:bg-purple-700 text-slate-100 bg-slate-800 hover:bg-slate-900"
                           >
                             <Loader className="w-4 h-4 mr-2 animate-spin" />
-                            <span>Running please wait...</span>
+                            <span>Running, please wait...</span>
                           </Button>
                         ) : (
                           <Button
@@ -204,31 +179,28 @@ export default function EditorComponent() {
                             size={"sm"}
                             className="dark:bg-purple-600 dark:hover:bg-purple-700 text-slate-100 bg-slate-800 hover:bg-slate-900"
                           >
-                            <Play className="w-4 h-4 mr-2 " />
+                            <Play className="w-4 h-4 mr-2" />
                             <span>Run</span>
                           </Button>
                         )}
                       </div>
+
                       <div className="overflow-hidden">
                         {err ? (
                           <div className="flex items-center space-x-2 border border-red-600 px-6 py-6">
                             <TriangleAlert className="w-5 h-5 mr-2 flex-shrink-0" />
                             <p className="text-xs text-red-500">
-                              Failed to Compile the Code , Please try again !
+                              Failed to compile the code, please try again!
                             </p>
                           </div>
                         ) : (
-                          <>
-                            <div className="m-2 p-6 bg-slate-400 dark:bg-slate-900 rounded-lg">
-                              {output.map((item) => {
-                                return (
-                                  <p className="text-sm" key={item}>
-                                    {item}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          </>
+                          <div className="m-2 p-6 bg-slate-400 dark:bg-slate-900 rounded-lg">
+                            {output.map((item, index) => (
+                              <p className="text-sm" key={index}>
+                                {item}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
