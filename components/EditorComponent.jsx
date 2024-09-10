@@ -4,9 +4,7 @@ import React, { useRef, useState } from "react";
 import * as monaco from "monaco-editor";
 import { ModeToggleBtn } from "./mode-toggle-btn";
 import toast from "react-hot-toast";
-import SelectLanguages, {
-  selectedLanguageOptionProps,
-} from "./SelectLanguages";
+import SelectLanguages, { selectedLanguageOptionProps } from "./SelectLanguages";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -41,6 +39,7 @@ export default function EditorComponent({ problem }) {
     }
   }
 
+  // Function to execute the code
   async function executeCode() {
     setLoading(true);
     const requestData = {
@@ -65,10 +64,35 @@ export default function EditorComponent({ problem }) {
     }
   }
 
+  // Function to handle language selection
   function onSelect(value) {
     const selectedLanguage = value.language;
     setLanguageOption(value);
     setSourceCode(codeSnippets[selectedLanguage]);
+  }
+
+  // Function to download the code and output
+  function downloadFile() {
+    const fileName = `team_solution_${languageOption.language}.txt`;
+    const fileContent = `Problem: ${problem.title}\n\nCode:\n${sourceCode}\n\nOutput:\n${output.join(
+      "\n"
+    )}`;
+
+    const blob = new Blob([fileContent], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Code and Output downloaded successfully!");
+  }
+
+  // Function to submit the code
+  async function submitCode() {
+    await executeCode(); // Execute the code before submission
+    downloadFile(); // Download the file after execution
   }
 
   return (
@@ -80,7 +104,8 @@ export default function EditorComponent({ problem }) {
             Coding Playground
           </h2>
           <div className="flex items-center space-x-2 pb-3">
-            <Button onClick={executeCode}>Submit</Button>
+            {/* Submit Button */}
+            <Button onClick={submitCode}>Submit</Button>
           </div>
           <div className="flex items-center space-x-2 pb-3">
             {/* Theme Toggler */}
@@ -107,21 +132,14 @@ export default function EditorComponent({ problem }) {
                 <div className="flex justify-center">
                   <div className="flex p-2 dark:bg-slate-800 bg-slate-400 rounded m-2 w-full items-center justify-center">
                     <div className="bg-slate-400 dark:bg-slate-950 p-3 rounded w-full">
-                      <h2 className="text-2xl font-semibold">
-                        Problem Statement
-                      </h2>
+                      <h2 className="text-2xl font-semibold">Problem Statement</h2>
                       {problem ? (
                         <>
-                          <h3 className="text-xl bg-slate-800">
-                            {problem.title}
-                          </h3>
+                          <h3 className="text-xl bg-slate-800">{problem.title}</h3>
                           <p>{problem.description}</p>
                         </>
                       ) : (
-                        <p>
-                          No problem available for this round. Please refresh
-                          the page
-                        </p>
+                        <p>No problem available for this round. Please refresh the page</p>
                       )}
                     </div>
                   </div>
@@ -134,11 +152,7 @@ export default function EditorComponent({ problem }) {
               <ResizablePanel defaultSize={75} minSize={50}>
                 <ResizablePanelGroup direction="vertical">
                   {/* Code Editor Panel */}
-                  <ResizablePanel
-                    defaultSize={50}
-                    minSize={25}
-                    className="m-2 rounded"
-                  >
+                  <ResizablePanel defaultSize={50} minSize={25} className="m-2 rounded">
                     <Editor
                       theme={theme === "dark" ? "vs-dark" : "vs-light"}
                       height="90vh"

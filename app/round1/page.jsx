@@ -1,63 +1,79 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import EditorComponent from "@/components/EditorComponent";
-import { problemStatements } from "@/config/problemStatements";
+import { useEffect, useState, useRef, useCallback } from "react";
+import EditorComponent from "@/components/EditorComponent"; // Assuming you're importing this
+import toast from "react-hot-toast";
 
-const Round1 = () => {
-  const [team, setTeam] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(60); // 30 minutes in seconds (30 * 60)
-
-  useEffect(() => {
-    // Fetch team data from localStorage
-    const storedTeamData = JSON.parse(localStorage.getItem("teamData"));
-    if (storedTeamData) {
-      setTeam(storedTeamData);
-    }
-
-    // Start countdown timer
-    const intervalId = setInterval(() => {
-      setTimeLeft((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
-    }, 1000);
-
-    // Cleanup on component unmount
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // Format the time left into minutes and seconds
-  const formatTime = (time) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = time % 60;
-    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-  };
-
-  return (
-    <div className="p-4 bg-slate-100 dark:bg-slate-800 m-4 rounded-lg">
-      {team ? (
-        <>
-          <h1 className="text-2xl">Welcome, {team.teamName}</h1>
-          <p>Team Members: {team.members.join(", ")}</p>
-        </>
-      ) : (
-        <p>Loading team information...</p>
-      )}
-
-      {/* Timer Display */}
-      <div className="mt-4">
-        <h2 className="text-xl mb-6">Time Remaining: {formatTime(timeLeft)}</h2>
-      </div>
-
-      {/* Problem and Editor */}
-      <EditorComponent problem={problemStatements.round1} />
-
-      {/* When time is up */}
-      {timeLeft === 0 && (
-        <div className="mt-4 text-red-600">
-          <h2>Time&apos;s up! Please submit your solution.</h2>
-        </div>
-      )}
-    </div>
-  );
+// Sample problem statement for round 1
+const problem = {
+  title: "Example Problem",
+  description: "Write a function to reverse a string.",
 };
 
-export default Round1;
+export default function Round1() {
+  const [timeLeft, setTimeLeft] = useState(300); // Timer set to 5 minutes (300 seconds)
+  const [sourceCode, setSourceCode] = useState("// Write your code here");
+  const [output, setOutput] = useState([]);
+  const timerRef = useRef(null);
+
+  // Function to download code and output after the timer runs out
+  const downloadFile = useCallback(() => {
+    const fileName = `team_solution_round1.txt`;
+    const fileContent = `Problem: ${
+      problem.title
+    }\n\nCode:\n${sourceCode}\n\nOutput:\n${output.join("\n")}`;
+
+    const blob = new Blob([fileContent], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Code and Output downloaded successfully!");
+  }, [sourceCode, output]);
+
+  // Function to start the countdown
+  useEffect(() => {
+    if (timeLeft > 0) {
+      timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 30);
+    } else {
+      clearTimeout(timerRef.current);
+      // When the timer runs out, trigger the submission/download
+      downloadFile();
+    }
+
+    return () => clearTimeout(timerRef.current);
+  }, [timeLeft, downloadFile]);
+
+  // Function to submit manually (optional)
+  function submitManually() {
+    downloadFile();
+  }
+
+  return (
+    <div className="min-h-screen dark:bg-slate-900 bg-slate-300 rounded-lg shadow-2xl py-6 px-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold tracking-tight">Round 1</h2>
+        {/* Timer */}
+        <div className="text-lg">
+          Time Left: {Math.floor(timeLeft / 60)}:
+          {("0" + (timeLeft % 60)).slice(-2)}
+        </div>
+        {/* Manual submit button (optional) */}
+        <button
+          onClick={submitManually}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Submit Manually
+        </button>
+      </div>
+
+      {/* Problem Statement and Editor */}
+      <div className="my-4">
+        <EditorComponent problem={problem} />
+      </div>
+    </div>
+  );
+}
