@@ -27,7 +27,6 @@ export default function EditorComponent() {
   const [output, setOutput] = useState([]);
   const [err, setErr] = useState(false);
   const [sourceCode, setSourceCode] = useState(codeSnippets["python"]);
-  // console.log(language);
 
   function handleEditorDidMount(editor) {
     if (editor) {
@@ -40,6 +39,18 @@ export default function EditorComponent() {
     if (value) {
       setSourceCode(value);
     }
+  }
+
+  async function downloadFile(filename, content) {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   async function onSubmit() {
@@ -57,28 +68,22 @@ export default function EditorComponent() {
       const result = await compileCode(requestData);
       setOutput(result.run.output.split("\n"));
       console.log(result);
-      const blob = new Blob([sourceCode], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `code.txt`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success("Code saved locally");
+
+      // Download code file
+      await downloadFile("code.txt", sourceCode);
+
+      // Download output file
+      await downloadFile("output.txt", result.run.output);
+
+      toast.success("Code saved and output downloaded successfully");
       setLoading(false);
       setErr(false);
-      toast.success("Compiled Successfully");
     } catch (error) {
       setErr(true);
       setLoading(false);
       toast.error("Failed to compile the Code");
       console.log(error);
     }
-
-    console.log(requestData);
-    // setLoading(false);
   }
 
   function onSelect(value) {
@@ -117,7 +122,7 @@ export default function EditorComponent() {
     <>
       <div className="min-h-screen dark:bg-slate-900 bg-slate-300 rounded shadow-2xl py-6 px-8">
         {/* Editor Header */}
-        <div className="flex items-center  justify-between ">
+        <div className="flex items-center justify-between ">
           <h2 className="scroll-m-20 text-2xl font-semibold tracking-tight first:mt-0">
             Coding Playground
           </h2>
@@ -148,6 +153,7 @@ export default function EditorComponent() {
                 <div className="flex justify-center">
                   <div className="flex p-6 dark:bg-slate-800 bg-slate-400 rounded m-2 w-full items-center justify-center">
                     <h2>Problem Statement</h2>
+                    <h3></h3>
                   </div>
                 </div>
               </ResizablePanel>
@@ -159,8 +165,6 @@ export default function EditorComponent() {
                     minSize={25}
                     className="m-2 rounded"
                   >
-                    {/* <div className="flex h-full items-center justify-center p-6"> */}
-
                     <Editor
                       theme={theme === "dark" ? "vs-dark" : "vs-light"}
                       height="90vh"
@@ -179,12 +183,10 @@ export default function EditorComponent() {
                       value={sourceCode}
                       onChange={handleOnChange}
                     />
-                    {/* </div> */}
                   </ResizablePanel>
                   <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={50} minSize={25} className="">
                     <div className="p-4 bg-white dark:bg-slate-800 m-2 rounded">
-                      {/* <span className="font-semibold">Three</span> */}
                       <div className="flex items-center justify-between p-2 dark:bg-slate-800 bg-slate-400 rounded">
                         <h2>Output</h2>
                         {loading ? (
